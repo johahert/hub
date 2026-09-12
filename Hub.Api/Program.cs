@@ -29,11 +29,50 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/api/nodes/root", async (HubDbContext db) =>
 {
     var projects = await db.Nodes
-    .Where(n => n.ParentId == null)
-    .OrderBy(n => n.SortOrder).ThenBy(n => n.Title)
-    .Select(n => new { n.Id, n.Title, n.Type, n.Status })
-    .ToListAsync();
+        .Where(n => n.ParentId == null)
+        .OrderBy(n => n.SortOrder).ThenBy(n => n.Title)
+        .Select(n => new { n.Id, n.Title, n.Type, n.Status })
+        .ToListAsync();
     return Results.Ok(projects); 
+});
+
+app.MapGet("/api/nodes/{id:guid}", async (Guid id, HubDbContext db) => {
+    var node = await db.Nodes
+        .Where(n => n.Id == id)
+        .Select(n => new
+        {
+            n.Id,
+            n.Type,
+            n.ParentId,
+            n.Title,
+            n.Notes,
+            n.Status,
+            n.IsBlocked,
+            n.BlockedReason,
+            n.DueAt,
+            n.RemindAt,
+            n.CreatedAt,
+            n.UpdatedAt  
+        })
+        .FirstOrDefaultAsync();
+
+    return node is null ? Results.NotFound() : Results.Ok(node);
+});
+
+app.MapGet("/api/nodes/{id:guid}/children", async (Guid id, HubDbContext db) => {
+    var children = await db.Nodes
+    .Where(n => n.ParentId == id)
+    .Select(n => new
+    {
+        n.Id,
+        n.Type,
+        n.Title,
+        n.Status,
+        n.IsBlocked,
+    })
+    .ToListAsync();
+
+    return Results.Ok(children);
 });
 
 app.UseHttpsRedirection();
