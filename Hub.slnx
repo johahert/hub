@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Hub.Api/Hub.Api.csproj" />
+  <Project Path="Hub.Core/Hub.Core.csproj" />
+</Solution>
