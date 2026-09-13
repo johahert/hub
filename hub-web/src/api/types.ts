@@ -6,6 +6,12 @@ export const NodeType = {
 
 export type NodeType = (typeof NodeType)[keyof typeof NodeType];
 
+export const NodeStatuses: Record<NodeType, string[]> = {
+    [NodeType.Project]: ['Active', 'Inactive'],
+    [NodeType.Epic]: ['Planning', 'Active', 'Done', 'Waiting', 'Cancelled'],
+    [NodeType.WorkItem]: ['ToDo', 'InProgress', 'Done', 'Blocked'],
+};
+
 export interface NodeSummary {
     id: string,
     type: NodeType,

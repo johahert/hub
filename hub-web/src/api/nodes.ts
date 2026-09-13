@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { NodeType, type NodeSummary, type NodeDetail } from "./types";
+import { NodeType, NodeStatuses, type NodeSummary, type NodeDetail } from "./types";
 
 async function fetchJson<T>(url: string): Promise<T> {
     const res = await fetch(url);
@@ -74,11 +74,12 @@ export function useCreateChildNode(parentId: string, parentType: NodeType) {
 
             const previousChildren = queryClient.getQueryData<NodeSummary[]>(childrenKey);
 
+            const childType = (parentType + 1) as NodeType;
             const optimisticNode: NodeSummary = {
                 id: `optimistic-${crypto.randomUUID()}`,
-                type: (parentType + 1) as NodeType,
+                type: childType,
                 title,
-                status: '',
+                status: NodeStatuses[childType][0],
             };
 
             queryClient.setQueryData<NodeSummary[]>(childrenKey, (old) => [
@@ -101,6 +102,38 @@ export function useCreateChildNode(parentId: string, parentType: NodeType) {
 
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: childrenKey });
+        },
+    });
+}
+
+// Optimistically move a child node to a new status (e.g. kanban drag-and-drop), applied to parentId's children list
+export function useUpdateNodeStatus(parentId: string) {
+    const queryClient = useQueryClient();
+    const childrenKey = ['nodes', parentId, 'children'];
+
+    return useMutation({
+        mutationFn: ({ id, status }: { id: string; status: string }) =>
+            putData<NodeSummary>(`/api/nodes/${id}`, { status }),
+
+        onMutate: async ({ id, status }) => {
+            await queryClient.cancelQueries({ queryKey: childrenKey });
+
+            const previousChildren = queryClient.getQueryData<NodeSummary[]>(childrenKey);
+
+            queryClient.setQueryData<NodeSummary[]>(childrenKey, (old) =>
+                old?.map((n) => (n.id === id ? { ...n, status } : n))
+            );
+
+            return { previousChildren };
+        },
+
+        onError: (_err, _vars, context) => {
+            queryClient.setQueryData(childrenKey, context?.previousChildren);
+        },
+
+        onSettled: (_data, _err, { id }) => {
+            queryClient.invalidateQueries({ queryKey: childrenKey });
+            queryClient.invalidateQueries({ queryKey: ['nodes', id] });
         },
     });
 }

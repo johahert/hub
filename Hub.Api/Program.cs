@@ -105,7 +105,22 @@ app.MapPost("/api/nodes", async (NewNode node, HubDbContext db) =>
 });
 
 
+app.MapPut("/api/nodes/{id:guid}", async (Guid id, UpdateNodeStatus patch, HubDbContext db) =>
+{
+    var node = await db.Nodes.FindAsync(id);
+    if (node is null) return Results.NotFound();
+    if (!NodeStatuses.For(node.Type).Contains(patch.Status))
+        return Results.BadRequest($"Invalid status '{patch.Status}' for {node.Type}.");
+
+    node.Status = patch.Status;
+    node.UpdatedAt = DateTime.UtcNow;
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { node.Id, node.Type, node.Title, node.Status, node.IsBlocked });
+});
+
 app.UseHttpsRedirection();
 
 app.Run();
 public record NewNode(Guid ParentId, string Title);
+public record UpdateNodeStatus(string Status);
