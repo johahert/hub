@@ -1,7 +1,7 @@
 export const NodeType = {
-    Project: 1,
-    Epic: 2,
-    WorkItem: 3,
+    Project: 0,
+    Epic: 1,
+    WorkItem: 2,
 } as const;
 
 export type NodeType = (typeof NodeType)[keyof typeof NodeType];

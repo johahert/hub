@@ -35,8 +35,8 @@ export function ChildrenList() {
         <Text c="dimmed" size="sm">No children yet.</Text>
       )}
     
-      {current?.type != NodeType.WorkItem && (
-        <NewChildForm key={currentNodeId} parentId={currentNodeId} />
+      {current && current.type !== NodeType.WorkItem && (
+        <NewChildForm key={currentNodeId} parentId={currentNodeId} parentType={current.type} />
       )}
 
       <Stack gap="xs">

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { NodeSummary, NodeDetail } from "./types";
+import { NodeType, type NodeSummary, type NodeDetail } from "./types";
 
 async function fetchJson<T>(url: string): Promise<T> {
     const res = await fetch(url);
@@ -60,13 +60,48 @@ export function useNode(id: string | null) {
 }
 
 
-export function useCreateNode() {
+// Create a child node under parentId, applied optimistically to that parent's children list
+export function useCreateChildNode(parentId: string, parentType: NodeType) {
     const queryClient = useQueryClient();
+    const childrenKey = ['nodes', parentId, 'children'];
+
     return useMutation({
-        mutationFn: (data: Partial<NodeDetail>) => PostData<NodeDetail>('/api/nodes', data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['nodes'] });
-        }
+        mutationFn: (title: string) =>
+            PostData<NodeSummary>('/api/nodes', { parentId, title }),
+
+        onMutate: async (title) => {
+            await queryClient.cancelQueries({ queryKey: childrenKey });
+
+            const previousChildren = queryClient.getQueryData<NodeSummary[]>(childrenKey);
+
+            const optimisticNode: NodeSummary = {
+                id: `optimistic-${crypto.randomUUID()}`,
+                type: (parentType + 1) as NodeType,
+                title,
+                status: '',
+            };
+
+            queryClient.setQueryData<NodeSummary[]>(childrenKey, (old) => [
+                ...(old ?? []),
+                optimisticNode,
+            ]);
+
+            return { previousChildren, optimisticId: optimisticNode.id };
+        },
+
+        onError: (_err, _title, context) => {
+            queryClient.setQueryData(childrenKey, context?.previousChildren);
+        },
+
+        onSuccess: (created, _title, context) => {
+            queryClient.setQueryData<NodeSummary[]>(childrenKey, (old) =>
+                old?.map((n) => (n.id === context?.optimisticId ? created : n))
+            );
+        },
+
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: childrenKey });
+        },
     });
 }
 

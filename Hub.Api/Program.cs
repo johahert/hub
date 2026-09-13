@@ -1,4 +1,5 @@
 using Hub.Core.Data;
+using Hub.Core.Domain;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,6 +76,36 @@ app.MapGet("/api/nodes/{id:guid}/children", async (Guid id, HubDbContext db) => 
     return Results.Ok(children);
 });
 
+// implement a post call
+app.MapPost("/api/nodes", async (NewNode node, HubDbContext db) =>
+{
+    var parent = await db.Nodes.FindAsync(node.ParentId);
+    if (parent is null) return Results.NotFound();
+    if (parent.Type == NodeType.WorkItem) return Results.BadRequest("Work items cannot have children.");
+
+    var childType = (NodeType)((int)parent.Type + 1);
+    var n = new Node
+    {
+        Title = node.Title,
+        ParentId = parent.Id,
+        Type = childType,
+        Status = NodeStatuses.Default(childType),
+    };
+    await db.Nodes.AddAsync(n);
+    await db.SaveChangesAsync();
+    var dto = new
+    {
+        n.Id,
+        n.Type,
+        n.Title,
+        n.Status,
+        n.IsBlocked
+    };
+    return Results.Ok(dto);
+});
+
+
 app.UseHttpsRedirection();
 
 app.Run();
+public record NewNode(Guid ParentId, string Title);
