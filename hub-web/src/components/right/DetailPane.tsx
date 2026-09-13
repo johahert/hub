@@ -1,28 +1,28 @@
-import { Badge, Stack, Text, Title } from '@mantine/core'
 import { useNode } from '../../api/nodes'
 import { useSelection } from '../../stores/selection'
+import { Badge } from '../ui/badge'
 
 export function DetailPane() {
   const { selectedCardId } = useSelection()
   const { data: node } = useNode(selectedCardId)
 
   if (!selectedCardId) {
-    return <Text c="dimmed" size="sm">Select a card to see details.</Text>
+    return <p className="text-sm text-neutral-600">Select a card to see details.</p>
   }
-  if (!node) return <Text c="dimmed" size="sm">Loading…</Text>
+  if (!node) return <p className="text-sm text-neutral-600">Loading…</p>
 
   return (
-    <Stack>
-      <Title order={4}>{node.title}</Title>
-      <Badge variant="light">{node.status}</Badge>
-      <Text size="sm" c="dimmed">
+    <div className="flex flex-col gap-3">
+      <h2 className="font-heading text-xl">{node.title}</h2>
+      <Badge variant="accent" className="w-fit">{node.status}</Badge>
+      <p className="text-sm text-neutral-600">
         Created {new Date(node.createdAt).toLocaleDateString()}
-      </Text>
+      </p>
       {node.notes ? (
-        <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{node.notes}</Text>
+        <p className="whitespace-pre-wrap text-sm">{node.notes}</p>
       ) : (
-        <Text size="sm" c="dimmed">No notes yet.</Text>
+        <p className="text-sm text-neutral-600">No notes yet.</p>
       )}
-    </Stack>
+    </div>
   )
 }
