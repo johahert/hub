@@ -36,7 +36,7 @@ const NewChildForm = ({ parentId, parentType }: Props) => {
         key={form.key('title')}
         {...form.getInputProps('title')}
       />
-      <Button type="submit" loading={createChild.isPending}>Add Child</Button>
+      <Button type="submit" loading={createChild.isPending} disabled={createChild.isPending || !form.isValid()}>Add Child</Button>
     </Stack>
     </form>
   )
