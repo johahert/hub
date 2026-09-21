@@ -48,6 +48,9 @@
   --radius-lg: 28px;
   --radius-xl: 32.2px;
 
+  --kanban-scrim: rgba(32, 30, 29, 0.40);
+  --kanban-lift-shadow: 0 30px 60px -14px rgba(32, 30, 29, 0.45);
+
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
   --shadow-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
   --shadow-lg: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
@@ -79,6 +82,9 @@
   --color-accent-700: #ffc6a5;
   --color-accent-800: #ffe1d0;
   --color-accent-900: #fff2eb;
+
+  --kanban-scrim: rgba(8, 7, 6, 0.58);
+  --kanban-lift-shadow: 0 30px 60px -14px rgba(0, 0, 0, 0.72);
 
   --color-accent-2: #9fb281;
   --color-accent-2-100: #272e1b;
@@ -123,4 +129,118 @@ h1, h2, h3, h4, h5, h6 {
 }
 .scroll-pane::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Kanban drag choreography.
+   Six beats: lift, recede, tilt, reflow, glide, flash. The timings here are the
+   ones ChildrenList.tsx drives — keep the two in step if either changes. */
+
+.kanban-board {
+  position: relative;
+}
+
+/* Recede: the board dims and softens behind the card being carried, while the
+   column under it is raised above the scrim so exactly one column stays sharp. */
+.kanban-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  background: var(--kanban-scrim);
+  -webkit-backdrop-filter: blur(2.5px) saturate(0.9);
+  backdrop-filter: blur(2.5px) saturate(0.9);
+  transition: opacity 280ms cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+.kanban-scrim[data-dragging="true"] {
+  opacity: 1;
+}
+
+.kanban-column {
+  position: relative;
+}
+/* Only the hovered column takes a z-index. Giving every column one would make each
+   a stacking context, trapping the carried card (fixed, z-index 5000, and a child of
+   the column it came from) underneath the scrim as soon as it left home. */
+.kanban-column[data-over="true"] {
+  z-index: 55;
+}
+
+.kanban-column__body {
+  transition:
+    background-color 240ms ease,
+    box-shadow 280ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.kanban-column__body[data-over="true"] {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, transparent),
+    0 24px 60px -34px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+
+/* Lift: the carried card scales up, tilts with the pointer and takes on a ring
+   and halo in the accent. --kanban-tilt is written straight onto .kanban-board
+   during a drag, so tracking the pointer costs no React render. */
+.kanban-card {
+  transform: rotate(0deg) scale(1);
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.25, 1),
+    box-shadow 220ms ease,
+    background-color 220ms ease,
+    border-color 220ms ease;
+}
+.kanban-card:not(.kanban-card--lifted):hover {
+  box-shadow: var(--shadow-md);
+}
+.kanban-card--lifted {
+  transform: rotate(var(--kanban-tilt, 0deg)) scale(1.045);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent));
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  box-shadow:
+    var(--kanban-lift-shadow),
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent),
+    0 0 48px -6px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+/* Flash: one pulse when the card reaches its slot, and never again. */
+@keyframes kanban-land {
+  0% {
+    transform: scale(1.02);
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-accent));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 85%, transparent),
+      0 0 40px -2px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  38% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent),
+      0 0 26px -4px color-mix(in srgb, var(--color-accent) 26%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+  }
+}
+.kanban-card--flash {
+  animation: kanban-land 640ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kanban-card,
+  .kanban-column__body,
+  .kanban-scrim {
+    transition-duration: 120ms;
+  }
+  .kanban-card--lifted {
+    transform: scale(1.045);
+  }
+  .kanban-card--flash {
+    animation-duration: 120ms;
+  }
+  .kanban-scrim {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
